@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend  # Definindo o caminho correto do diretório
+      dockerfile: Dockerfile
+    container_name: backend
+    restart: always
+    working_dir: /app
+    volumes:
+      - ./backend:/app  # Código fonte do backend
+      - /app/node_modules  # Cache de módulos do Node.js para evitar problemas de permissão
+    ports:
+      - "8080:8080"  # Porta do backend
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - DATABASE_URL=postgres://postgres:password@postgres:5432/mydatabase  # Variável de ambiente para o Postgres
+      - REDIS_URL=redis://redis:6379  # Variável de ambiente para o Redis
+    depends_on:
+      - postgres
+      - redis
+
+  frontend:
+    image: nginx:latest
+    container_name: frontend
+    restart: always
+    volumes:
+      - ./frontend/build:/usr/share/nginx/html  # Build do frontend React
+      - ./nginx/frontend.conf:/etc/nginx/conf.d/default.conf  # Configuração do frontend no Nginx
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"  # Porta para servir o frontend
+
+  postgres:
+    image: postgres:13
+    container_name: orostecdb
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=whatiteckt
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    restart: always
+    volumes:
+      - redis_data:/data
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf  # Configuração global do Nginx
+      - /etc/letsencrypt:/etc/letsencrypt  # Certificados SSL
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
